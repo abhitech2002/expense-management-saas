@@ -8,6 +8,7 @@ const connectDB = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
 
 const app = express();
 
@@ -51,12 +52,14 @@ const authLimiter = rateLimit({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
   app.use(morgan('combined'));
 }
 
+// Health check
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -66,8 +69,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// API Routes
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/users', userRoutes);
 
+// 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -75,6 +81,7 @@ app.use((req, res) => {
   });
 });
 
+// Global error handler
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
@@ -85,12 +92,14 @@ app.listen(PORT, () => {
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
 });
 
+// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   console.error('❌ UNHANDLED REJECTION! Shutting down...');
   console.error(err);
   process.exit(1);
 });
 
+// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   console.error('❌ UNCAUGHT EXCEPTION! Shutting down...');
   console.error(err);
