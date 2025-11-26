@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Tenant = require('../models/Tenant');
+const mongoose = require('mongoose');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 /**
@@ -411,7 +412,7 @@ const deleteUser = asyncHandler(async (req, res) => {
  * GET /api/users/stats
  */
 const getUserStats = asyncHandler(async (req, res) => {
-  const tenantId = req.tenantId;
+  const tenantId = new mongoose.Types.ObjectId(req.tenantId); // Convert to ObjectId
 
   // Total users by role
   const usersByRole = await User.aggregate([
@@ -427,23 +428,23 @@ const getUserStats = asyncHandler(async (req, res) => {
 
   // Users by department
   const usersByDepartment = await User.aggregate([
-    { $match: { tenantId: tenantId, department: { $ne: null } } },
+    { $match: { tenantId: tenantId, department: { $ne: null, $ne: '' } } },
     { $group: { _id: '$department', count: { $sum: 1 } } },
     { $sort: { count: -1 } }
   ]);
 
   // Total users
-  const totalUsers = await User.countDocuments({ tenantId });
+  const totalUsers = await User.countDocuments({ tenantId: req.tenantId }); // Regular query uses string
 
   // Recent users (last 7 days)
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const recentUsers = await User.countDocuments({
-    tenantId,
+    tenantId: req.tenantId,
     createdAt: { $gte: sevenDaysAgo }
   });
 
   // Tenant limits
-  const tenant = await Tenant.findById(tenantId);
+  const tenant = await Tenant.findById(req.tenantId);
 
   res.status(200).json({
     success: true,
@@ -466,7 +467,6 @@ const getUserStats = asyncHandler(async (req, res) => {
     }
   });
 });
-
 /**
  * Get managers list (for dropdowns)
  * GET /api/users/managers
