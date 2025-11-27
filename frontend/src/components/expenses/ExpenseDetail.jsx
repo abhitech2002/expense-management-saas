@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { X, Download, CheckCircle, XCircle, FileText, Calendar, DollarSign, Tag, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import expenseService from '../../services/expenseService';
+import reportService from '../../services/reportService';
 import { 
   formatCurrency, 
   formatDate, 
@@ -21,6 +22,7 @@ function ExpenseDetail({ expense, onClose, onRefresh }) {
   const [approvalAction, setApprovalAction] = useState(null); // 'approve' or 'reject'
   const [approvalNotes, setApprovalNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const canApprove = () => {
     if (expense.status !== 'pending') return false;
@@ -61,6 +63,31 @@ function ExpenseDetail({ expense, onClose, onRefresh }) {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    const toastId = toast.loading('Preparing download...');
+    try {
+      const response = await reportService.downloadExpenseReport(expense._id);
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `expense-${expense._id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('PDF downloaded', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to download PDF', { id: toastId });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -72,12 +99,35 @@ function ExpenseDetail({ expense, onClose, onRefresh }) {
               {capitalize(expense.status)}
             </span>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDownloadPDF}
+              className="btn-secondary flex items-center"
+              disabled={downloading}
+              aria-busy={downloading}
+            >
+              {downloading ? (
+                <span className="inline-flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                  Downloading...
+                </span>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}

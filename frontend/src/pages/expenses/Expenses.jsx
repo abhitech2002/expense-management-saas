@@ -3,9 +3,10 @@
 // ==========================================
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Eye, Edit, Trash2, Receipt, FileText } from 'lucide-react';
+import { Plus, Search, Filter, Eye, Edit, Trash2, Receipt, FileText, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import expenseService from '../../services/expenseService';
+import reportService from '../../services/reportService';
 import ExpenseForm from '../../components/expenses/ExpenseForm';
 import ExpenseDetail from '../../components/expenses/ExpenseDetail';
 import { 
@@ -40,6 +41,8 @@ function Expenses() {
     totalPages: 1,
     totalExpenses: 0
   });
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [downloadingSummary, setDownloadingSummary] = useState(false);
 
   useEffect(() => {
     fetchExpenses();
@@ -115,6 +118,68 @@ function Expenses() {
     });
   };
 
+  const handleDownloadExcel = async () => {
+    if (downloadingExcel) return;
+    setDownloadingExcel(true);
+    const toastId = toast.loading('Preparing Excel...');
+    try {
+      const params = {
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        status: filters.status,
+        category: filters.category
+      };
+
+      // Use reportService to fetch excel blob
+      const response = await reportService.downloadExcel(params);
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'expenses.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Excel file downloaded', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to download Excel file', { id: toastId });
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
+  const handleDownloadSummary = async () => {
+    if (downloadingSummary) return;
+    setDownloadingSummary(true);
+    const toastId = toast.loading('Preparing report...');
+    try {
+      const params = {
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        status: filters.status,
+        category: filters.category
+      };
+
+      const response = await reportService.downloadSummary(params);
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'expense-summary.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast.success('Report downloaded', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to download report', { id: toastId });
+    } finally {
+      setDownloadingSummary(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -123,16 +188,60 @@ function Expenses() {
           <h1 className="text-3xl font-bold text-gray-900">Expenses</h1>
           <p className="text-gray-600 mt-1">Manage and track your expenses</p>
         </div>
-        <button
-          onClick={() => {
-            setSelectedExpense(null);
-            setShowForm(true);
-          }}
-          className="btn-primary flex items-center"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          New Expense
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleDownloadExcel}
+            className="btn-secondary flex items-center"
+            disabled={downloadingExcel}
+            aria-busy={downloadingExcel}
+          >
+            {downloadingExcel ? (
+              <span className="inline-flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                Exporting...
+              </span>
+            ) : (
+              <>
+                <Download className="w-4 h-4 mr-2" />
+                Export to Excel
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleDownloadSummary}
+            className="btn-secondary flex items-center"
+            disabled={downloadingSummary}
+            aria-busy={downloadingSummary}
+          >
+            {downloadingSummary ? (
+              <span className="inline-flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                Preparing...
+              </span>
+            ) : (
+              <>
+                <FileText className="w-4 h-4 mr-2" />
+                Download Report
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setSelectedExpense(null);
+              setShowForm(true);
+            }}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            New Expense
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
