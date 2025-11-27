@@ -6,6 +6,10 @@ const {
   generateExpenseReportPDF,
   generateExpenseSummaryPDF 
 } = require('../services/pdfService');
+const { 
+  generateExpenseExcel,
+  generateSimpleExpenseExcel 
+} = require('../services/excelService');
 const mongoose = require('mongoose');
 
 /**
@@ -151,7 +155,121 @@ const downloadSummaryReport = asyncHandler(async (req, res) => {
   res.send(pdf);
 });
 
+/**
+ * Download expenses as Excel
+ * GET /api/reports/excel
+ */
+const downloadExpenseExcel = asyncHandler(async (req, res) => {
+  const tenantId = new mongoose.Types.ObjectId(req.tenantId);
+  const userId = req.userId;
+  const userRole = req.role;
+
+  // Build query filters (same as getAllExpenses)
+  const filters = { tenantId };
+
+  // Role-based filtering
+  if (userRole === 'employee') {
+    filters.userId = new mongoose.Types.ObjectId(userId);
+  } else if (userRole === 'manager') {
+    filters.$or = [
+      { userId: new mongoose.Types.ObjectId(userId) },
+      { reviewerId: new mongoose.Types.ObjectId(userId) }
+    ];
+  }
+
+  // Query parameter filters
+  if (req.query.status) {
+    filters.status = req.query.status;
+  }
+
+  if (req.query.category) {
+    filters.category = req.query.category;
+  }
+
+  if (req.query.startDate && req.query.endDate) {
+    filters.expenseDate = {
+      $gte: new Date(req.query.startDate),
+      $lte: new Date(req.query.endDate)
+    };
+  }
+
+  // Fetch expenses with populated fields
+  const expenses = await Expense.aggregate([
+    { $match: filters },
+    { $sort: { expenseDate: -1 } },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'userId',
+        foreignField: '_id',
+        as: 'user'
+      }
+    },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'reviewerId',
+        foreignField: '_id',
+        as: 'reviewer'
+      }
+    },
+    { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+    { $unwind: { path: '$reviewer', preserveNullAndEmptyArrays: true } }
+  ]);
+
+  if (expenses.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: 'No expenses found for export'
+    });
+  }
+
+  // Calculate summary statistics
+  const summary = {
+    totalAmount: expenses.reduce((sum, exp) => sum + exp.amount, 0),
+    averageAmount: expenses.reduce((sum, exp) => sum + exp.amount, 0) / expenses.length,
+    byStatus: expenses.reduce((acc, exp) => {
+      if (!acc[exp.status]) {
+        acc[exp.status] = { count: 0, amount: 0 };
+      }
+      acc[exp.status].count++;
+      acc[exp.status].amount += exp.amount;
+      return acc;
+    }, {}),
+    byCategory: expenses.reduce((acc, exp) => {
+      if (!acc[exp.category]) {
+        acc[exp.category] = { count: 0, amount: 0 };
+      }
+      acc[exp.category].count++;
+      acc[exp.category].amount += exp.amount;
+      return acc;
+    }, {})
+  };
+
+  // Generate Excel
+  const buffer = req.query.simple === 'true' 
+    ? generateSimpleExpenseExcel(expenses)
+    : generateExpenseExcel(expenses, summary);
+
+  // Generate filename with date range or current date
+  const dateStr = req.query.startDate && req.query.endDate
+    ? `${req.query.startDate}_to_${req.query.endDate}`
+    : new Date().toISOString().split('T')[0];
+  
+  const filename = `expenses_${dateStr}.xlsx`;
+
+  // Set response headers
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Length', buffer.length);
+
+  // Send Excel file
+  res.send(buffer);
+});
+
+// Export the new function
 module.exports = {
   downloadExpenseReport,
-  downloadSummaryReport
+  downloadSummaryReport,
+  downloadExpenseExcel 
 };
