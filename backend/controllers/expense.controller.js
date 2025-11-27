@@ -3,6 +3,11 @@ const User = require('../models/User');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { deleteFile } = require('../config/cloudinary');
 const mongoose = require('mongoose');
+const {
+  sendExpenseApprovedEmail,
+  sendExpenseRejectedEmail,
+  sendNewExpenseNotification
+} = require('../services/emailService');
 
 /**
  * Create new expense
@@ -62,6 +67,14 @@ const createExpense = asyncHandler(async (req, res) => {
   const populatedExpense = await Expense.findById(expense._id)
     .populate('userId', 'firstName lastName email')
     .populate('reviewerId', 'firstName lastName email');
+
+  if (user.managerId) {
+    const manager = await User.findById(user.managerId);
+    if (manager) {
+      sendNewExpenseNotification(expense, user, manager)
+        .catch(err => console.error('Failed to send email notification:', err));
+    }
+  }
 
   res.status(201).json({
     success: true,
@@ -430,7 +443,11 @@ const approveExpense = asyncHandler(async (req, res) => {
       .populate('userId', 'firstName lastName email')
       .populate('reviewerId', 'firstName lastName email');
 
-    // TODO: Send email notification to employee
+    const reviewer = await User.findById(reviewerId);
+    if (reviewer && expense.userId) {
+      sendExpenseApprovedEmail(updatedExpense, expense.userId, reviewer)
+        .catch(err => console.error('Failed to send approval email:', err));
+    }
 
     res.status(200).json({
       success: true,
@@ -491,7 +508,11 @@ const rejectExpense = asyncHandler(async (req, res) => {
       .populate('userId', 'firstName lastName email')
       .populate('reviewerId', 'firstName lastName email');
 
-    // TODO: Send email notification to employee
+    const reviewer = await User.findById(reviewerId);
+    if (reviewer && expense.userId) {
+      sendExpenseRejectedEmail(updatedExpense, expense.userId, reviewer)
+        .catch(err => console.error('Failed to send rejection email:', err));
+    }
 
     res.status(200).json({
       success: true,

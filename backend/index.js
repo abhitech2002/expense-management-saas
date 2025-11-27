@@ -6,15 +6,19 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
+const { verifyEmailConfig } = require('./config/email');
 
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const expenseRoutes = require('./routes/expense.routes');
+const reportRoutes = require('./routes/report.routes');
 
 
 const app = express();
 
 connectDB();
+
+verifyEmailConfig();
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -75,6 +79,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/reports', reportRoutes);
 
 // 404 Handler
 app.use((req, res) => {

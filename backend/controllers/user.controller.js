@@ -2,6 +2,8 @@ const User = require('../models/User');
 const Tenant = require('../models/Tenant');
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { sendWelcomeEmail } = require('../services/emailService');
+
 
 /**
  * Create new user (Admin only)
@@ -98,6 +100,11 @@ const createUser = asyncHandler(async (req, res) => {
   const userResponse = await User.findById(user._id)
     .select('-password -refreshToken')
     .populate('managerId', 'firstName lastName email role');
+
+  if (tenant) {
+    sendWelcomeEmail(user, tenant)
+      .catch(err => console.error('Failed to send welcome email:', err));
+  }
 
   res.status(201).json({
     success: true,
