@@ -1,6 +1,9 @@
+// frontend/src/App.jsx (UPDATE - Add Expense Routes)
+// ==========================================
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './Context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Auth Pages
@@ -15,6 +18,9 @@ import AdminDashboard from './pages/dashboard/AdminDashboard';
 import Users from './pages/users/Users';
 import UserProfile from './pages/users/UserProfile';
 
+// Expense Pages - NEW
+import Expenses from './pages/expenses/Expenses';
+
 // Layout Component
 import Layout from './components/layout/Layout';
 
@@ -22,7 +28,6 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        {/* Toast Notifications */}
         <Toaster
           position="top-right"
           toastOptions={{
@@ -60,13 +65,9 @@ function App() {
               </ProtectedRoute>
             }
           >
-            {/* Default redirect to dashboard */}
             <Route index element={<Navigate to="/dashboard" replace />} />
-
-            {/* Dashboard - All authenticated users */}
             <Route path="dashboard" element={<Dashboard />} />
-
-            {/* Admin Dashboard - Admin only */}
+            
             <Route
               path="admin"
               element={
@@ -75,8 +76,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
-            {/* Users - Admin and Manager */}
+            
             <Route
               path="users"
               element={
@@ -85,12 +85,13 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
-            {/* User Profile - All users can view their own */}
+            
             <Route path="profile" element={<UserProfile />} />
+            
+            {/* NEW: Expense Routes */}
+            <Route path="expenses" element={<Expenses />} />
           </Route>
 
-          {/* 404 Not Found */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

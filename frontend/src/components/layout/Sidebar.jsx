@@ -20,16 +20,16 @@ function Sidebar({ open }) {
       roles: ['admin', 'manager', 'employee']
     },
     {
+      name: 'Expenses', // UPDATED - Now functional
+      path: '/expenses',
+      icon: Receipt,
+      roles: ['admin', 'manager', 'employee']
+    },
+    {
       name: 'Users',
       path: '/users',
       icon: Users,
       roles: ['admin', 'manager']
-    },
-    {
-      name: 'Expenses',
-      path: '/expenses',
-      icon: Receipt,
-      roles: ['admin', 'manager', 'employee']
     },
     {
       name: 'Reports',

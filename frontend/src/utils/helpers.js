@@ -155,3 +155,81 @@ export const debounce = (func, wait = 300) => {
     timeout = setTimeout(later, wait);
   };
 };
+
+/**
+ * Format currency
+ */
+export const formatCurrency = (amount, currency = 'USD') => {
+  const symbols = { USD: '$', EUR: '€', GBP: '£', INR: '₹' };
+  return `${symbols[currency] || '$'}${Number(amount).toFixed(2)}`;
+};
+
+/**
+ * Get expense category options
+ */
+export const expenseCategories = [
+  'Travel',
+  'Meals',
+  'Accommodation',
+  'Transportation',
+  'Office Supplies',
+  'Software',
+  'Equipment',
+  'Entertainment',
+  'Training',
+  'Other'
+];
+
+/**
+ * Get currency options
+ */
+export const currencyOptions = [
+  { value: 'USD', label: '$ USD' },
+  { value: 'EUR', label: '€ EUR' },
+  { value: 'GBP', label: '£ GBP' },
+  { value: 'INR', label: '₹ INR' }
+];
+
+/**
+ * Format file size
+ */
+export const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+};
+
+/**
+ * Validate file
+ */
+export const validateFile = (file) => {
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+  
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 5MB' };
+  }
+  
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+  
+  return { valid: true };
+};
+
+/**
+ * Get today's date in YYYY-MM-DD format
+ */
+export const getTodayDate = () => {
+  return new Date().toISOString().split('T')[0];
+};
+
+/**
+ * Parse date to YYYY-MM-DD for input field
+ */
+export const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  return new Date(dateString).toISOString().split('T')[0];
+};
